@@ -51,7 +51,9 @@ class ContactController {
   async update(request, response) {
     // Editar um registro
     const { id } = request.params;
-    const { name, email, phone } = request.body;
+    const {
+      name, email, phone, category_id,
+    } = request.body;
 
     if (!name) {
       return response.status(400).json({ error: 'Name is required' });
@@ -65,7 +67,7 @@ class ContactController {
 
     const contactByEmailExists = await ContactsRepository.findByEmail(email);
 
-    if (contactByEmailExists && contactByIdExists !== id) {
+    if (contactByEmailExists && contactByIdExists.id !== id) {
       return response.status(400).json({ error: 'This email is already taken' });
     }
 
@@ -73,6 +75,7 @@ class ContactController {
       name,
       email,
       phone,
+      category_id,
     });
 
     response.json(updatedContact);
@@ -81,11 +84,6 @@ class ContactController {
   async delete(request, response) {
     // Deletar um registro
     const { id } = request.params;
-    const contact = await ContactsRepository.findById(id);
-
-    if (!contact) {
-      return response.status(404).json({ error: 'User not found' });
-    }
 
     await ContactsRepository.delete(id);
 

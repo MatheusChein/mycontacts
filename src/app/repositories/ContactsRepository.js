@@ -1,35 +1,11 @@
-const { v4 } = require('uuid');
-
 const db = require('../../database');
-
-let contacts = [
-  {
-    id: v4(),
-    name: 'Matheus Chein',
-    email: 'matheuschein@email.com',
-    phone: '123123123',
-    category_id: v4(),
-  },
-  {
-    id: v4(),
-    name: 'Matheus Batista',
-    email: 'matheuschein@email.com',
-    phone: '123123123',
-    category_id: v4(),
-  },
-  {
-    id: v4(),
-    name: 'Matheus Muniz',
-    email: 'matheuschein@email.com',
-    phone: '123123123',
-    category_id: v4(),
-  },
-];
 
 class ContactsRepository {
   async findAll(orderBy = 'ASC') {
     const direction = orderBy.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
 
+    // Aqui não dá para usar os bindings, os $1, $2 etc quando dizemos a ordenação
+    // Por isso fizemos a verificação da linha 31
     const rows = await db.query(`SELECT * FROM contacts ORDER BY name ${direction}`);
 
     return rows;
@@ -47,11 +23,10 @@ class ContactsRepository {
     return row;
   }
 
-  delete(id) {
-    return new Promise((resolve) => {
-      contacts = contacts.filter((item) => item.id !== id);
-      resolve();
-    });
+  async delete(id) {
+    const deleteOp = await db.query('DELETE FROM contacts WHERE id = $1', [id]);
+
+    return deleteOp;
   }
 
   async create({
@@ -60,7 +35,7 @@ class ContactsRepository {
     phone,
     category_id,
   }) {
-    // Esse modo de $1, $2 etc. é para evitar ataques de SQL injection
+    // Esse modo de $1, $2 são os chamados bindings. Isso serve para evitar ataques de SQL injection
     const [row] = await db.query(`
       INSERT INTO contacts(name, email, phone, category_id)
       VALUES($1, $2, $3, $4)
@@ -70,32 +45,19 @@ class ContactsRepository {
     return row;
   }
 
-  update(id, contact) {
-    const { name, email, phone } = contact;
+  async update(id, contact) {
+    const {
+      name, email, phone, category_id,
+    } = contact;
 
-    return new Promise((resolve) => {
-      let updatedContact = {
-        name,
-        email,
-        phone,
-      };
+    const [row] = await db.query(`
+      UPDATE contacts
+      SET name = $1, email = $2, phone = $3, category_id = $4
+      WHERE id = $5
+      RETURNING *
+    `, [name, email, phone, category_id, id]);
 
-      contacts = contacts.map((item) => {
-        if (item.id === id) {
-          updatedContact = {
-            ...item,
-            name,
-            email,
-            phone,
-          };
-          return updatedContact;
-        }
-
-        return item;
-      });
-
-      resolve(updatedContact);
-    });
+    return row;
   }
 }
 
